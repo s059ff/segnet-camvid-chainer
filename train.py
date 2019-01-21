@@ -6,11 +6,11 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 import cupy as cp
-
+from chainer.dataset import concat_examples
 from chainer.iterators import SerialIterator
 from chainer.training import Trainer
+from chainer.training.extensions import Evaluator, LogReport, PlotReport, PrintReport, ProgressBar, snapshot_object
 from chainer.training.updaters import StandardUpdater
-from chainer.training.extensions import Evaluator, snapshot_object, LogReport, PlotReport, PrintReport, ProgressBar
 
 from model import SegNet
 
@@ -67,14 +67,16 @@ def main():
     directory = f'./temp/{timestamp}/'
     os.makedirs(directory)
 
+    def converter(batch, device=None, padding=None):
+        return concat_examples([(cp.array(x), cp.array(y)) for x, y in batch], device, padding)
+
     train_iter = SerialIterator(train, args.batch_size)
     test_iter = SerialIterator(test, args.batch_size, repeat=False, shuffle=False)
-    updater = StandardUpdater(train_iter, optimizer)
+    updater = StandardUpdater(train_iter, optimizer, converter=converter)
     extensions = [
-        Evaluator(test_iter, model),
+        Evaluator(test_iter, model, converter=converter),
         snapshot_object(target=model,
-                        filename='model-{.updater.epoch:04d}.npz',
-                        trigger=(args.checkpoint_interval, 'epoch')),
+                        filename='model-{.updater.epoch:04d}.npz'),
         LogReport(log_name='log'),
         PlotReport(y_keys=['main/loss', 'validation/main/loss'],
                    x_key='epoch',

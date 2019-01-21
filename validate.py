@@ -3,6 +3,7 @@ import os
 
 import chainer
 import chainer.links as L
+import chainer.functions as F
 import numpy as np
 
 import cv2
@@ -53,7 +54,7 @@ def main():
     filename, ext = os.path.splitext(tail)
     os.makedirs(f'{head}/{filename}/', exist_ok=True)
 
-    for i, x, y, t in zip(range(args.num), val_x, model.predictor(val_x[:args.num]).data, val_y):
+    for i, x, y, t in zip(range(args.num), val_x, F.sigmoid(model.predictor(val_x[:args.num])).data, val_y):
         x = x.transpose((1, 2, 0))
         y = y.transpose((1, 2, 0))
         t = t.transpose((1, 2, 0))
