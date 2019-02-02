@@ -2,21 +2,24 @@ import glob
 import os
 
 import numpy as np
+import tqdm
 
 import cv2
 
 
-def load(folder='train'):
-
-    # Load dataset.
+def load(folder='train', augmentation=True):
     originals = []
     annotations = []
-    for filename in map(lambda path: os.path.basename(path), glob.glob(f'./dataset/{folder}/*.png')):
-        path1 = f'./dataset/{folder}/' + filename
-        path2 = f'./dataset/{folder}annot/' + filename
+    paths = glob.glob(f'./dataset/{folder}/*.png')
+    filenames = map(lambda path: os.path.basename(path), paths)
+
+    for filename in tqdm.tqdm(filenames):
+        path1 = f'./dataset/{folder}/{filename}'
+        path2 = f'./dataset/{folder}annot/{filename}'
 
         if not os.path.exists(path1):
             raise Exception(f'{path1} is not found.')
+
         if not os.path.exists(path2):
             raise Exception(f'{path2} is not found.')
 
@@ -27,20 +30,18 @@ def load(folder='train'):
         r = cv2.equalizeHist(r)
         image = np.dstack((b, g, r))
         image = np.float32(image) / 255.
+        image = np.transpose(image, (2, 0, 1))
         originals.append(image)
 
         image = cv2.imread(path2)[:, :, 0]
         # '8' means CAR class label.
-        annotation = np.where(image == 8, 1, 0)
-        annotation = np.int8(annotation)
-        annotation = np.reshape(annotation, (*annotation.shape, 1))
-        annotations.append(annotation)
+        image = np.where(image == 8, 1, 0)
+        image = np.int8(image)
+        image = np.reshape(image, (1, *image.shape))
+        annotations.append(image)
 
     originals = np.array(originals, dtype=np.float32)
     annotations = np.array(annotations, dtype=np.int8)
-
-    originals = np.transpose(originals, (0, 3, 1, 2))
-    annotations = np.reshape(annotations, (-1, 1, 360, 480))
 
     return (originals, annotations)
 
